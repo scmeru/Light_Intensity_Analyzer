@@ -1,8 +1,9 @@
 <script>
   import CameraView from './lib/components/CameraView.svelte';
+  import Simulator from './lib/components/Simulator.svelte';
   import LuminanceChart from './lib/components/LuminanceChart.svelte';
   import ControlPanel from './lib/components/ControlPanel.svelte';
-  import { isAnalyzing } from './lib/store.js';
+  import { isAnalyzing, videoSourceMode } from './lib/store.js';
 </script>
 
 <div class="app-layout">
@@ -18,7 +19,7 @@
         </span>
         <div>
           <h1 class="brand-title">LightScope</h1>
-          <p class="brand-sub">Analisis Intensitas Cahaya</p>
+          <p class="brand-sub">Analisis Fisika & Intensitas Cahaya</p>
         </div>
       </div>
       <div class="header-status" class:active={$isAnalyzing}>
@@ -28,7 +29,11 @@
     </header>
 
     <div class="camera-section">
-      <CameraView />
+      {#if $videoSourceMode === 'simulation'}
+        <Simulator />
+      {:else}
+        <CameraView />
+      {/if}
     </div>
 
     <div class="chart-section">

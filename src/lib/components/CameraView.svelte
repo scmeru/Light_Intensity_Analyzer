@@ -20,9 +20,12 @@
   let hiddenCanvas;
   let hiddenCtx;
   let overlayCtx;
+  let laserCanvas;    // dedicated canvas for laser vision rendering
+  let laserCtx;
 
   let stream = null;
   let animationFrameId = null;
+  let laserVision = false; // toggle state
 
   // Manual ROI Box (stored as percentages 0-1)
   let box = { startX: 0.25, startY: 0.25, endX: 0.75, endY: 0.75 };
@@ -47,6 +50,7 @@
     getDevices();
     hiddenCtx = hiddenCanvas.getContext('2d', { willReadFrequently: true });
     overlayCtx = overlayCanvas.getContext('2d');
+    laserCtx   = laserCanvas.getContext('2d');
   });
 
   onDestroy(() => {
@@ -343,6 +347,79 @@
       $intensityData = newIntensity;
     }
 
+    // Precompute speckle noise outside animation frame loop (lazy init once)
+    if (!window.__SPECKLE) {
+      window.__SPECKLE = new Float32Array(2048);
+      for(let i = 0; i < 2048; i++) {
+        // Laser speckle physics distribution
+        window.__SPECKLE[i] = Math.pow(Math.random(), 0.7) * 1.6; 
+      }
+    }
+    const SPECKLE = window.__SPECKLE;
+
+    // === Laser Vision: Synthetic 1D -> 2D Reconstruction ===
+    if (laserVision && laserCtx && $intensityData.length > 0) {
+      laserCanvas.width  = vw;
+      laserCanvas.height = vh;
+      
+      // Base background (absolute black void like simulation)
+      laserCtx.fillStyle = '#06060c';
+      laserCtx.fillRect(0, 0, vw, vh);
+
+      const cy = extractY + extractH / 2; // Center spots on the ROI
+      const spotRadius = Math.max(12, vh * 0.15); // Dynamic size based on viewport
+      
+      const intensities = $intensityData;
+      const plotW = intensities.length;
+      
+      const out = laserCtx.getImageData(0, 0, vw, vh);
+      const d = out.data;
+      
+      // Ultra-realistic base color (Deep Ruby Red 650nm)
+      const cr = 255, cg = 12, cb = 20;
+      
+      // Normalize to current frame's brightest peak for consistent glow
+      const maxL = Math.max(...intensities, 1);
+      
+      // Precompute vertical gaussian envelope for extreme performance
+      const envLUT = new Float32Array(vh);
+      for(let yi = 0; yi < vh; yi++) {
+         const dy = (yi - cy) / spotRadius;
+         envLUT[yi] = Math.exp(-dy * dy * 2.5);
+      }
+
+      const startX = extractX; 
+
+      for (let x = 0; x < plotW; x++) {
+          let val = intensities[x] / maxL; // 0..1 scale
+          // Non-linear contrast boost to suppress noise floor and sharpen the 'peaks'
+          let I = Math.pow(val, 2.5); 
+          if (I < 0.02) continue; // Strip low noise
+
+          for (let yi = 0; yi < vh; yi++) {
+             // Multiply spatial speckle noise for actual particle interference look
+             const spk = SPECKLE[((x * 107) + (yi * 17)) % 2048];
+             const al = I * envLUT[yi] * spk;
+             if (al < 0.01) continue;
+
+             const px = startX + x;
+             if (px < 0 || px >= vw) continue;
+
+             // Hotspot additive color mapping (Bloom core physics)
+             const b_r = Math.min(255, cr * al * 3.5);
+             const b_g = Math.min(255, cg * al * 3.5 + (al > 0.5 ? Math.pow(al-0.5, 1.5)*12*255 : 0));
+             const b_b = Math.min(255, cb * al * 3.5 + (al > 0.5 ? Math.pow(al-0.5, 1.5)*12*255 : 0));
+
+             const idx = (yi * vw + px) * 4;
+             d[idx] = b_r;
+             d[idx+1] = b_g;
+             d[idx+2] = b_b;
+             d[idx+3] = 255;
+          }
+      }
+      laserCtx.putImageData(out, 0, 0);
+    }
+
     animationFrameId = requestAnimationFrame(loop);
   }
 </script>
@@ -354,13 +431,32 @@
        on:touchstart={pointerDown} on:touchmove={pointerMove} on:touchend={pointerUp} on:touchcancel={pointerUp}>
        
     <!-- svelte-ignore a11y-media-has-caption -->
-    <video bind:this={videoElement} playsinline muted class:mirrored={$mirrorVideo} style="display: {$videoSourceMode === 'camera' ? 'block' : 'none'}"></video>
+    <video bind:this={videoElement} playsinline muted class:mirrored={$mirrorVideo} style="display: {$videoSourceMode === 'camera' && !laserVision ? 'block' : 'none'}"></video>
     
-    <img bind:this={imageElement} src={$uploadedImage} alt="Uploaded" class:mirrored={$mirrorVideo} style="display: {$videoSourceMode === 'image' && $uploadedImage ? 'block' : 'none'}" />
+    <img bind:this={imageElement} src={$uploadedImage} alt="Uploaded" class:mirrored={$mirrorVideo} style="display: {$videoSourceMode === 'image' && $uploadedImage && !laserVision ? 'block' : 'none'}" />
     
+    <!-- Laser Vision canvas (shows instead of video when active). No mirrored class needed as it's drawn from hiddenCtx which is physically mirrored. -->
+    <canvas bind:this={laserCanvas} class="laser-canvas" style="display: {laserVision ? 'block' : 'none'}"></canvas>
+
     <canvas bind:this={overlayCanvas} class="overlay" class:blocking={$roiMode === 'manual'} class:mirrored={$mirrorVideo}></canvas>
     <canvas bind:this={hiddenCanvas} class="hidden"></canvas>
     
+    {#if $isAnalyzing}
+      <!-- Laser Vision Toggle -->
+      <button class="laser-btn" class:laser-active={laserVision}
+              title={laserVision ? 'Kembali ke Normal' : 'Aktifkan Laser Vision'}
+              on:click|stopPropagation|preventDefault={() => laserVision = !laserVision}
+              on:mousedown|stopPropagation
+              on:touchstart|stopPropagation>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="3" fill="currentColor"/>
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          <path d="M12 6v2M12 16v2M6 12H4M20 12h-2M7.76 7.76l-1.41-1.41M17.66 17.66l-1.41-1.41M7.76 16.24l-1.41 1.41M17.66 6.34l-1.41 1.41" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <span>{laserVision ? 'Normal' : 'Laser'}</span>
+      </button>
+    {/if}
+
     {#if $videoSourceMode === 'camera' && $isAnalyzing}
       <button class="freeze-btn" class:frozen={$isFrozen} 
               on:click|stopPropagation|preventDefault={toggleFreeze}
@@ -531,6 +627,58 @@
   
   .hidden {
     display: none;
+  }
+
+  /* Laser Vision canvas — same stack as video/img */
+  .laser-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    z-index: 5;
+  }
+
+  /* Laser Vision toggle button */
+  .laser-btn {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 99px;
+    background: rgba(20, 20, 32, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.76rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    z-index: 30;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: all 0.25s ease;
+    letter-spacing: 0.03em;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  }
+
+  .laser-btn:hover {
+    background: rgba(30, 30, 50, 0.9);
+    border-color: #f7506a;
+    color: #f7506a;
+  }
+
+  .laser-btn.laser-active {
+    background: rgba(247, 80, 106, 0.2);
+    border-color: #f7506a;
+    color: #f7506a;
+    box-shadow: 0 0 16px rgba(247, 80, 106, 0.35), 0 2px 12px rgba(0,0,0,0.3);
+    animation: laserPulse 2.5s ease-in-out infinite;
+  }
+
+  @keyframes laserPulse {
+    0%, 100% { box-shadow: 0 0 12px rgba(247,80,106,0.3), 0 2px 12px rgba(0,0,0,0.3); }
+    50%       { box-shadow: 0 0 22px rgba(247,80,106,0.6), 0 2px 12px rgba(0,0,0,0.3); }
   }
 
   .standby-overlay {

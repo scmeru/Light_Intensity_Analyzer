@@ -8,7 +8,14 @@
     lockExposure,
     bandHeightPercent,
     videoSourceMode,
-    uploadedImage
+    uploadedImage,
+    simType,
+    simWavelength,
+    simSlitWidth,
+    simSlitDistance,
+    simSlitCount,
+    simScreenDistance,
+    simZoom
   } from '../store.js';
 
   let fileInput;
@@ -59,6 +66,16 @@
       </svg>
       Gambar
     </button>
+    <button 
+      class="tab-btn" 
+      class:active={$videoSourceMode === 'simulation'}
+      on:click={() => $videoSourceMode = 'simulation'}
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 4V20M4 12H20M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      Simulasi
+    </button>
   </div>
 
   <div class="card">
@@ -94,7 +111,7 @@
         </label>
       </div>
 
-    {:else}
+    {:else if $videoSourceMode === 'image'}
       <div class="upload-section">
         <input 
           type="file" 
@@ -110,9 +127,74 @@
           {$uploadedImage ? 'Pilih Gambar Lain' : 'Pilih Gambar dari Galeri'}
         </button>
       </div>
+
+    {:else if $videoSourceMode === 'simulation'}
+      <div class="input-group">
+        <label for="sim-type">Jenis Celah</label>
+        <div class="select-wrapper">
+          <select id="sim-type" bind:value={$simType}>
+            <option value="single">Celah Tunggal (Single Slit)</option>
+            <option value="double">Celah Ganda (Double Slit)</option>
+            <option value="grating">Kisi Difraksi (Grating)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <label for="sim-wavelength">Panjang Gelombang (Warna)</label>
+          <span class="value-badge">{$simWavelength} nm</span>
+        </div>
+        <input id="sim-wavelength" type="range" min="380" max="780" step="5" bind:value={$simWavelength}>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <label for="sim-slit-width">Lebar Celah (a)</label>
+          <span class="value-badge">{$simSlitWidth} mm</span>
+        </div>
+        <input id="sim-slit-width" type="range" min="0.01" max="0.5" step="0.01" bind:value={$simSlitWidth}>
+      </div>
+
+      {#if $simType === 'double' || $simType === 'grating'}
+        <div class="slider-group">
+          <div class="slider-header">
+            <label for="sim-slit-dist">Jarak Antar Celah (d)</label>
+            <span class="value-badge">{$simSlitDistance} mm</span>
+          </div>
+          <input id="sim-slit-dist" type="range" min="0.1" max="2.0" step="0.05" bind:value={$simSlitDistance}>
+        </div>
+      {/if}
+
+      {#if $simType === 'grating'}
+        <div class="slider-group">
+          <div class="slider-header">
+            <label for="sim-slit-count">Jumlah Celah (N)</label>
+            <span class="value-badge">{$simSlitCount}</span>
+          </div>
+          <input id="sim-slit-count" type="range" min="2" max="50" step="1" bind:value={$simSlitCount}>
+        </div>
+      {/if}
+
+      <div class="slider-group">
+        <div class="slider-header">
+          <label for="sim-screen-dist">Jarak Layar (L)</label>
+          <span class="value-badge">{$simScreenDistance} mm</span>
+        </div>
+        <input id="sim-screen-dist" type="range" min="100" max="5000" step="100" bind:value={$simScreenDistance}>
+      </div>
+      
+      <div class="slider-group">
+        <div class="slider-header">
+          <label for="sim-zoom">Zoom Visual (Skala)</label>
+          <span class="value-badge">{$simZoom}x</span>
+        </div>
+        <input id="sim-zoom" type="range" min="0.1" max="10" step="0.1" bind:value={$simZoom}>
+      </div>
     {/if}
   </div>
 
+  {#if $videoSourceMode !== 'simulation'}
   <div class="card">
     <div class="input-group">
       <label for="mode-select">Mode Region of Interest (ROI)</label>
@@ -135,6 +217,7 @@
       </div>
     {/if}
   </div>
+  {/if}
 
   <div class="action-section">
     <button 
@@ -179,9 +262,18 @@
     border: none;
     color: var(--text-muted);
     font-weight: 600;
+    font-size: 0.68rem;
     transition: all 0.25s ease;
-    height: 40px;
+    height: 42px;
     border-radius: var(--radius-md);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 0 2px;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .tab-btn.active {
@@ -299,13 +391,13 @@
   input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     border-radius: 50%;
     background: var(--accent);
     cursor: pointer;
-    box-shadow: 0 0 10px var(--accent-glow);
-    border: 2px solid #fff;
+    box-shadow: 0 0 10px var(--accent-glow), inset 0 0 0 2px rgba(255,255,255,0.15);
+    border: none;
     transition: transform 0.1s ease;
   }
 
