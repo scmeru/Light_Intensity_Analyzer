@@ -161,18 +161,33 @@
 
     const mL = 56, mB = 42, mT = 20, mR = 24;
 
-    // ── AUTO-SCALE Y-axis (KEY for sensitivity) ──────────────────
-    const rawMax = Math.max(...data);
-    // Smooth the max to prevent axis jumping between frames
-    // Fast attack (peak), slow decay (smooth scale-down)
-    if (rawMax > smoothedMax) {
-      smoothedMax = rawMax;              // instant attack
-    } else {
-      smoothedMax = smoothedMax * 0.995 + rawMax * 0.005; // slow decay
-    }
-    const yMax = Math.max(smoothedMax * 1.12, 1); // 12% headroom
+    // ──────────────────────────────────────────────────────────
+    // SCIENTIFIC DATA PIPELINE
+    //
+    // Step 1 – Baseline subtraction
+    //   Ambil persentil ke-5 sebagai estimasi ambient light / noise floor.
+    //   Kurangi dari semua nilai dan clip ke ≥ 0.
+    //   Ini membuat background BENAR-BENAR mendekati nol seperti referensi.
+    const sorted5 = [...data].sort((a, b) => a - b);
+    const floor   = sorted5[Math.floor(sorted5.length * 0.05)] || 0;
+    const bsData  = data.map(v => Math.max(0, v - floor)); // baseline-subtracted
 
-    // Nice round Y tick values
+    // Step 2 – Gamma contrast  (γ > 1 pushes near-zero noise toward 0, peaks stay tall)
+    //   display = (normalized)^γ × scale
+    //   γ = 2.0  →  nilai 10% → 1%,  nilai 90% → 81%  (puncak tetap lancip)
+    const GAMMA   = 2.0;
+    const bsMax   = Math.max(...bsData, 1);
+    const dispData = bsData.map(v => Math.pow(v / bsMax, GAMMA) * bsMax);
+
+    // Step 3 – Smoothed Y-axis scale (fast attack, slow decay)
+    if (bsMax > smoothedMax) {
+      smoothedMax = bsMax;
+    } else {
+      smoothedMax = smoothedMax * 0.995 + bsMax * 0.005;
+    }
+    const yMax = Math.max(smoothedMax * 1.10, 1); // 10% headroom
+    // ──────────────────────────────────────────────────────────
+
     const ySteps = 5;
     const { plotW, plotH } = drawAxesAndGrid(w, h, mL, mB, mT, mR, yMax, ySteps);
 
@@ -194,42 +209,39 @@
 
       ctx.fillText(xOff === 0 ? '0' : (xOff > 0 ? '+' : '') + xOff, xi, mT + plotH + 15);
     }
-    // X label
     ctx.fillStyle = 'rgba(100, 180, 220, 0.5)';
     ctx.font = '500 9px Inter, system-ui';
     ctx.textAlign = 'center';
     ctx.fillText('x  (px)', mL + plotW / 2, h - 5);
 
-    // ── Build plot points ────────────────────────────────────────
+    // ── Build plot points (MAX-POOLING downsampling) ──────────────
+    //   First-sample downsampling bisa melewatkan nilai puncak.
+    //   Max-pooling memastikan puncak selalu tertangkap → grafik lancip.
     let points = [];
-    if (len > plotW * 2) {
+    if (len > plotW) {
       const step = len / plotW;
-      for (let x = 0; x <= plotW; x++) {
-        const idx = Math.floor(x * step);
-        if (idx < len) {
-          points.push({ x: mL + x, y: mT + plotH - (data[idx] / yMax) * plotH });
-        }
+      for (let x = 0; x < plotW; x++) {
+        const i0 = Math.floor(x * step);
+        const i1 = Math.min(len - 1, Math.ceil((x + 1) * step));
+        let peak = 0;
+        for (let k = i0; k <= i1; k++) peak = Math.max(peak, dispData[k]);
+        points.push({ x: mL + x, y: mT + plotH - (peak / yMax) * plotH });
       }
     } else {
       for (let i = 0; i < len; i++) {
         const xp = mL + (i / (len - 1)) * plotW;
-        points.push({ x: xp, y: mT + plotH - (data[i] / yMax) * plotH });
+        points.push({ x: xp, y: mT + plotH - (dispData[i] / yMax) * plotH });
       }
     }
     if (points.length === 0) return;
 
-    // ── Fill under curve (gradient) ──────────────────────────────
-    const fillGrad = ctx.createLinearGradient(0, mT, 0, mT + plotH);
-    fillGrad.addColorStop(0,   'rgba(0, 210, 255, 0.38)');
-    fillGrad.addColorStop(0.6, 'rgba(0, 160, 220, 0.12)');
-    fillGrad.addColorStop(1,   'rgba(0, 140, 200, 0.02)');
-
+    // ── Fill under curve (flat light-blue, seperti referensi chart ilmiah) ──
     ctx.beginPath();
     ctx.moveTo(points[0].x, mT + plotH);
     for (const p of points) ctx.lineTo(p.x, p.y);
     ctx.lineTo(points[points.length - 1].x, mT + plotH);
     ctx.closePath();
-    ctx.fillStyle = fillGrad;
+    ctx.fillStyle = 'rgba(80, 180, 220, 0.22)';
     ctx.fill();
 
     // ── Plot line (crisp, no glow) ───────────────────────────────
@@ -242,13 +254,15 @@
     ctx.lineCap = 'round';
     ctx.stroke();
 
-    // ── Peak detection (threshold relative to max for sensitivity) ─
-    const peaks = findPeaks(data, 12, 0.04); // 4% of max as threshold
+    // ── Peak detection — gunakan bsData (sebelum gamma) agar posisi akurat ─
+    const peaks = findPeaks(bsData, 12, 0.04); // 4% of max as threshold
 
     // Draw peaks
     peaks.forEach((p, idx) => {
       const px  = mL + (p.index / (len - 1)) * plotW;
-      const py  = mT + plotH - (p.value / yMax) * plotH;
+      // py menggunakan dispData (setelah gamma) agar marker sejajar dengan garis grafik
+      const dispVal = dispData[p.index] ?? 0;
+      const py  = mT + plotH - (dispVal / yMax) * plotH;
 
       // Dashed drop line (thin, subtle)
       ctx.strokeStyle = 'rgba(140, 200, 220, 0.25)';
