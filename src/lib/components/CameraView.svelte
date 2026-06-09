@@ -14,14 +14,14 @@
     isFrozen
   } from '../store.js';
 
-  let videoElement: HTMLVideoElement;
-  let imageElement: HTMLImageElement;
-  let overlayCanvas: HTMLCanvasElement;
-  let hiddenCanvas: HTMLCanvasElement;
-  let hiddenCtx: CanvasRenderingContext2D;
-  let overlayCtx: CanvasRenderingContext2D;
-  let laserCanvas: HTMLCanvasElement;    // dedicated canvas for laser vision rendering
-  let laserCtx: CanvasRenderingContext2D;
+  let videoElement;
+  let imageElement;
+  let overlayCanvas;
+  let hiddenCanvas;
+  let hiddenCtx;
+  let overlayCtx;
+  let laserCanvas;    // dedicated canvas for laser vision rendering
+  let laserCtx;
 
   let stream = null;
   let animationFrameId = null;
