@@ -14,14 +14,14 @@ export const uploadedImage = writable(null);
 export const isFrozen = writable(false);
 
 // Mode selection for extracting light intensity
-// 'band' = horizontal slice profile (10% of height)
+// 'band' = horizontal slice profile (full image height by default)
 // 'center' = middle horizontal line
 // 'manual' = custom bounding box
 export const roiMode = writable("band");
 
 export const mirrorVideo = writable(false);
 export const lockExposure = writable(false);
-export const bandHeightPercent = writable(10); // 10% defaults
+export const bandHeightPercent = writable(100); // 100% default = full image
 
 // Physics Simulation State
 export const simType = writable('single'); // 'single', 'double', 'grating'

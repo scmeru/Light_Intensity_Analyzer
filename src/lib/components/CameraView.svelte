@@ -337,12 +337,11 @@
         for(let x = 0; x < cols; x++) {
           let i = (y * cols + x) * 4;
           let luminance = (data[i]*299 + data[i+1]*587 + data[i+2]*114) / 1000;
-          newIntensity[x] += luminance;
+          // MAX-projection: ambil nilai tertinggi per kolom (bukan rata-rata).
+          // Ini memastikan puncak tetap lancip berapa pun tinggi band,
+          // karena satu baris cerah cukup untuk memunculkan puncak.
+          if (luminance > newIntensity[x]) newIntensity[x] = luminance;
         }
-      }
-
-      for(let x = 0; x < cols; x++) {
-        newIntensity[x] = rows > 1 ? newIntensity[x] / rows : newIntensity[x];
       }
 
       $intensityData = newIntensity;
