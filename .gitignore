@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ESP32 LittleFS data folder — diisi manual dari hasil `npm run build`
+# Jangan commit file hasil build ke sini
+esp32/LightScope_ESP32/data/*
+!esp32/LightScope_ESP32/data/README.md

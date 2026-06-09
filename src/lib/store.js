@@ -6,7 +6,9 @@ export const cameraDevices = writable([]);
 export const selectedDeviceId = writable("");
 
 // Mode source
-// 'camera' = Live Camera, 'image' = Static Image Upload, 'simulation' = Physics Simulator
+// 'camera'     = Live Camera (navigator.mediaDevices)
+// 'image'      = Static Image Upload
+// 'simulation' = Physics Simulator
 export const videoSourceMode = writable('camera');
 export const uploadedImage = writable(null);
 export const isFrozen = writable(false);

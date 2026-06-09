@@ -14,14 +14,14 @@
     isFrozen
   } from '../store.js';
 
-  let videoElement;
-  let imageElement;
-  let overlayCanvas;
-  let hiddenCanvas;
-  let hiddenCtx;
-  let overlayCtx;
-  let laserCanvas;    // dedicated canvas for laser vision rendering
-  let laserCtx;
+  let videoElement: HTMLVideoElement;
+  let imageElement: HTMLImageElement;
+  let overlayCanvas: HTMLCanvasElement;
+  let hiddenCanvas: HTMLCanvasElement;
+  let hiddenCtx: CanvasRenderingContext2D;
+  let overlayCtx: CanvasRenderingContext2D;
+  let laserCanvas: HTMLCanvasElement;    // dedicated canvas for laser vision rendering
+  let laserCtx: CanvasRenderingContext2D;
 
   let stream = null;
   let animationFrameId = null;
@@ -199,6 +199,7 @@
       return;
     }
 
+    // Camera: tunggu stream siap
     if (!isImage && (!stream || videoElement.readyState < 2)) {
       animationFrameId = requestAnimationFrame(loop);
       return;
@@ -433,8 +434,9 @@
     <!-- svelte-ignore a11y-media-has-caption -->
     <video bind:this={videoElement} playsinline muted class:mirrored={$mirrorVideo} style="display: {$videoSourceMode === 'camera' && !laserVision ? 'block' : 'none'}"></video>
     
+    <!-- svelte-ignore a11y-missing-attribute -->
     <img bind:this={imageElement} src={$uploadedImage} alt="Uploaded" class:mirrored={$mirrorVideo} style="display: {$videoSourceMode === 'image' && $uploadedImage && !laserVision ? 'block' : 'none'}" />
-    
+
     <!-- Laser Vision canvas (shows instead of video when active). No mirrored class needed as it's drawn from hiddenCtx which is physically mirrored. -->
     <canvas bind:this={laserCanvas} class="laser-canvas" style="display: {laserVision ? 'block' : 'none'}"></canvas>
 

@@ -23,9 +23,9 @@
   --danger:        #f7506a;
   --danger-glow:   rgba(247, 80, 106, 0.3);
 
-  /* Typography */
-  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Mono', ui-monospace, Consolas, monospace;
+  /* Typography — fully offline, no CDN required */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Mono', ui-monospace, Consolas, monospace;
 
   /* Radii */
   --radius-sm:  8px;

@@ -18,7 +18,7 @@
     simZoom
   } from '../store.js';
 
-  let fileInput;
+  let fileInput = null;
 
   function toggleAnalysis() {
     $isAnalyzing = !$isAnalyzing;
@@ -46,6 +46,7 @@
 <div class="control-panel">
   <!-- Tabs Source -->
   <div class="source-tabs">
+    <!-- Mode Browser: gunakan kamera device -->
     <button 
       class="tab-btn" 
       class:active={$videoSourceMode === 'camera'}
@@ -292,7 +293,9 @@
     flex-direction: column;
     gap: 16px;
     box-shadow: var(--shadow-sm);
+    transition: border-color 0.15s ease;
   }
+
 
   .input-group {
     display: flex;
