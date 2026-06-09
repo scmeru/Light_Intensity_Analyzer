@@ -232,18 +232,15 @@
     ctx.fillStyle = fillGrad;
     ctx.fill();
 
-    // ── Plot line ────────────────────────────────────────────────
+    // ── Plot line (crisp, no glow) ───────────────────────────────
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
     for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
     ctx.strokeStyle = '#00ccff';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
-    ctx.shadowColor = '#00aaff';
-    ctx.shadowBlur = 5;
     ctx.stroke();
-    ctx.shadowBlur = 0;
 
     // ── Peak detection (threshold relative to max for sensitivity) ─
     const peaks = findPeaks(data, 12, 0.04); // 4% of max as threshold
@@ -253,32 +250,32 @@
       const px  = mL + (p.index / (len - 1)) * plotW;
       const py  = mT + plotH - (p.value / yMax) * plotH;
 
-      // Dashed drop line
-      ctx.strokeStyle = 'rgba(255, 230, 60, 0.2)';
-      ctx.setLineDash([2, 4]);
+      // Dashed drop line (thin, subtle)
+      ctx.strokeStyle = 'rgba(140, 200, 220, 0.25)';
+      ctx.setLineDash([3, 4]);
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(px, py + 5);
+      ctx.moveTo(px, py + 4);
       ctx.lineTo(px, mT + plotH);
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Peak dot
+      // Peak crosshair marker (+) — scientific style, no glow
+      const cs = 5; // crosshair arm length
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.arc(px, py, 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffe560';
-      ctx.shadowColor = '#ffe560';
-      ctx.shadowBlur = 10;
-      ctx.fill();
-      ctx.shadowBlur = 0;
+      ctx.moveTo(px - cs, py); ctx.lineTo(px + cs, py);
+      ctx.moveTo(px, py - cs); ctx.lineTo(px, py + cs);
+      ctx.stroke();
 
-      // Peak x-offset label
+      // Peak label: x-offset
       const xOff = Math.round(p.index - len / 2);
       const lx = (xOff > 0 ? '+' : '') + xOff;
-      ctx.fillStyle = 'rgba(255, 230, 80, 0.85)';
-      ctx.font = '600 9px Inter, system-ui';
+      ctx.fillStyle = 'rgba(200, 230, 255, 0.8)';
+      ctx.font = '500 9px Inter, system-ui';
       ctx.textAlign = 'center';
-      ctx.fillText(lx, px, Math.max(mT + 12, py - 7));
+      ctx.fillText(lx, px, Math.max(mT + 11, py - 7));
 
       // Δx bracket to previous peak
       if (idx > 0) {
