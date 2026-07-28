@@ -1,0 +1,53 @@
+================================================================================
+TABLE 17. Data Pengaruh Jarak Kisi ke Layar Tangkap terhadap Pola Interferensi pada LCD 1
+================================================================================
+Perc. | L (m) | λ (x10^-7 m) | I (luma) | Nilai x (+) | Nilai x (-) | P (x10^-2 m)
+--------------------------------------------------------------------------------
+  1   | 0,75  |     6,3      |  181,1   |    10,31    |   -12,60    |    13,4
+  2   | 0,50  |     6,3      |  188,2   |    12,31    |   -14,19    |    11,6
+  3   | 0,25  |     6,3      |  188,5   |    10,69    |   -13,36    |    10,1
+
+================================================================================
+TABLE 18. Data Pengaruh Jarak Kisi ke Layar Tangkap terhadap Pola Interferensi pada LCD 2
+================================================================================
+Perc. | L (m) | λ (x10^-7 m) | I (luma) | Nilai x (+) | Nilai x (-) | P (x10^-2 m)
+--------------------------------------------------------------------------------
+  1   | 0,75  |     6,3      |  226,3   |    19,31    |   -24,94    |    19,4
+  2   | 0,50  |     6,3      |  235,5   |    19,22    |   -24,35    |    18,0
+  3   | 0,25  |     6,3      |  249,6   |    19,31    |   -21,72    |    17,9
+
+================================================================================
+TABLE 19. Data Pengaruh Jarak Kisi ke Layar Tangkap terhadap Pola Interferensi pada LCD 3
+================================================================================
+Perc. | L (m) | λ (x10^-7 m) | I (luma) | Nilai x (+) | Nilai x (-) | P (x10^-2 m)
+--------------------------------------------------------------------------------
+  1   | 0,75  |     6,3      |  211,4   |    18,55    |   -21,15    |    20,1
+  2   | 0,50  |     6,3      |  218,7   |    17,24    |   -17,24    |    16,5
+  3   | 0,25  |     6,3      |  254,7   |    18,55    |   -17,39    |    16,3
+
+================================================================================
+TABLE 20. Data Pengaruh Jenis Kisi terhadap Pola Interferensi
+================================================================================
+Jenis | L (m) | λ (x10^-7 m) | I (luma) | Nilai x (+) | Nilai x (-) | P (x10^-2 m)
+--------------------------------------------------------------------------------
+  1   | 0,80  |     6,3      |  177,3   |    24,87    |   -23,74    |    23,9
+  2   | 0,80  |     6,3      |  209,7   |    25,10    |   -21,67    |    21,1
+  3   | 0,80  |     6,3      |  215,5   |    16,96    |   -18,09    |    17,3
+
+================================================================================
+KETERANGAN VARIABEL & KANALISIS
+================================================================================
+Keterangan:
+- L = Jarak LCD ke layar (m)
+- P = Lebar antara terang pusat dengan terang berikutnya (m)
+- I = Intensitas pada terang pusat (luma)
+- W = Jenis kisi
+
+Hasil Pengamatan:
+Serta diperoleh hasil bahwa jenis kisi yang digunakan akan berbanding lurus dengan intensitas terang pusat, serta berbanding terbalik dengan lebar antara terang pusat dengan terang berikutnya.
+
+Formula / Hubungan Proporsional:
+W ~ I   dan   W ~ 1/P
+
+Kajian Teori / Kesimpulan:
+Kesimpulan tersebut kemudian dihubungkan dengan kajian teori. Teori yang digunakan pada hasil penelitian ini didasarkan pada studi pustaka yang menyatakan bahwa, interferensi cahaya adalah perpaduan dua atau lebih sumber cahaya sehingga menghasilkan keadaan yang lebih terang (interferensi maksimum) dan keadaan yang gelap (interferensi minimum). Syarat terjadinya interferensi cahaya adalah cahaya tersebut harus koheren yaitu keadaan dua sumber cahaya atau lebih yang mempunyai frekuensi, amplitudo dan beda fase yang tetap. Pola yang terbentuk sesuai dengan teori bahwa akan terjadi interferensi konstruktif ditandai adanya garis terang maksimum dan interferensi destruktif ditandai dengan adanya garis gelap maksimum. Hal ini disebabkan karena distribusi energi cahaya tersebut yang tidak merata sehingga terdapat daerah gelap dan daerah terang (Halliday & Resnick, 2011). Apabila celah yang dilewati memiliki ukuran yang lebih lebar dari panjang gelombang, maka sudut θ akan kecil, yang menyebabkan lebar dari terang pusat juga semakin kecil. Hal ini disebabkan berkas cahaya melewati celah tanpa ada halangan. Sebaliknya, apabila lebar celah hanya beberapa kali lebih besar dari panjang gelombang misalkan hanya 5 kali lebih besar maka

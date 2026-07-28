@@ -34,3 +34,16 @@ export const simZoom = writable(1); // Zoom level for the chart
 
 // Raw plotting data [number, number, ...] representing luminance per column
 export const intensityData = writable([]);
+
+// ── Interferometry Physics Parameters ──────────────────────────────────────
+// Digunakan untuk mengkonversi posisi pixel → satuan fisik (cm)
+export const physL             = writable(0.75);   // Jarak LCD ke layar (m)
+export const physLambda        = writable(630);    // Panjang gelombang (nm)
+export const physFrameWidthCm  = writable(30);     // Lebar frame kamera secara fisik (cm)
+export const enableMeasurement = writable(false);  // Toggle aktifkan pengukuran
+
+// Live measurement result — diperbarui setiap frame saat enableMeasurement aktif
+export const liveInterference  = writable({ I: null, xPlus: null, xMinus: null, P: null });
+
+// Rekaman hasil pengukuran per sesi
+export const interferenceResults = writable([]);

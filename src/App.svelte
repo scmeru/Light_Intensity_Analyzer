@@ -3,6 +3,7 @@
   import Simulator from './lib/components/Simulator.svelte';
   import LuminanceChart from './lib/components/LuminanceChart.svelte';
   import ControlPanel from './lib/components/ControlPanel.svelte';
+  import InterferencePanel from './lib/components/InterferencePanel.svelte';
   import { isAnalyzing, videoSourceMode } from './lib/store.js';
 </script>
 
@@ -44,6 +45,7 @@
   <!-- Right/Bottom: Controls -->
   <aside class="control-column">
     <ControlPanel />
+    <InterferencePanel />
   </aside>
 </div>
 

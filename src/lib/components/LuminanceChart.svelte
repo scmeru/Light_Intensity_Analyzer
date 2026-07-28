@@ -1,6 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
-  import { intensityData, isAnalyzing, videoSourceMode } from '../store.js';
+  import { intensityData, isAnalyzing, videoSourceMode,
+           physFrameWidthCm, enableMeasurement, liveInterference } from '../store.js';
 
   let canvas;
   let ctx;
@@ -254,6 +255,125 @@
       patternColor = r.color;
     } else if ($videoSourceMode === 'simulation') {
       patternLabel = '';
+    }
+
+    // ── Interferometry Measurement ──────────────────────────────────────────
+    if ($enableMeasurement && $videoSourceMode !== 'simulation') {
+      if (peaks.length >= 1) {
+        // Central peak = peak dengan nilai luminance tertinggi
+        const centralPeak = peaks.reduce((best, p) => p.value > best.value ? p : best, peaks[0]);
+
+        // Cari puncak pertama di kanan dan kiri dari central peak
+        const rightPeaks = peaks
+          .filter(p => p.index > centralPeak.index)
+          .sort((a, b) => a.index - b.index);
+        const leftPeaks  = peaks
+          .filter(p => p.index < centralPeak.index)
+          .sort((a, b) => b.index - a.index);
+
+        const xPlusPeak  = rightPeaks[0] ?? null;
+        const xMinusPeak = leftPeaks[0]  ?? null;
+
+        // Konversi: 1 pixel data = physFrameWidthCm / len  cm
+        const cmPerPx   = $physFrameWidthCm / len;
+        const xPlusVal  = xPlusPeak  ? (xPlusPeak.index  - centralPeak.index) * cmPerPx  : null;
+        const xMinusVal = xMinusPeak ? -((centralPeak.index - xMinusPeak.index) * cmPerPx) : null;
+        const Pval = (xPlusVal !== null && xMinusVal !== null)
+          ? (Math.abs(xPlusVal) + Math.abs(xMinusVal)) / 2
+          : null;
+
+        // Update live store
+        liveInterference.set({
+          I:      +dispData[centralPeak.index].toFixed(1),
+          xPlus:  xPlusVal  !== null ? +xPlusVal.toFixed(2)  : null,
+          xMinus: xMinusVal !== null ? +xMinusVal.toFixed(2) : null,
+          P:      Pval      !== null ? +Pval.toFixed(2)      : null
+        });
+
+        // Helper: konversi index data → koordinat x di canvas
+        const idxToX = i => mL + (i / Math.max(len - 1, 1)) * plotW;
+
+        // ── Central peak: garis putus-putus ungu ──
+        const cxScr = idxToX(centralPeak.index);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(157,143,247,0.5)';
+        ctx.lineWidth   = 1.5;
+        ctx.setLineDash([3, 4]);
+        ctx.beginPath(); ctx.moveTo(cxScr, mT); ctx.lineTo(cxScr, mT + plotH); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle    = '#9d8ff7';
+        ctx.font         = '700 8px Arial, sans-serif';
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText('I₀', cxScr, mT + 3);
+        ctx.restore();
+
+        // ── x(+) peak: garis hijau ──
+        if (xPlusPeak && xPlusVal !== null) {
+          const sx = idxToX(xPlusPeak.index);
+          ctx.save();
+          ctx.strokeStyle = 'rgba(46,204,135,0.75)';
+          ctx.lineWidth   = 1.5;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath(); ctx.moveTo(sx, mT); ctx.lineTo(sx, mT + plotH); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle    = '#2ecc87';
+          ctx.font         = '700 8px Arial, sans-serif';
+          ctx.textAlign    = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillText('x(+)', sx, mT + 3);
+          ctx.font = '600 8px Arial, sans-serif';
+          ctx.fillText(`${xPlusVal.toFixed(2)}cm`, sx, mT + 13);
+          ctx.restore();
+        }
+
+        // ── x(-) peak: garis merah ──
+        if (xMinusPeak && xMinusVal !== null) {
+          const sx = idxToX(xMinusPeak.index);
+          ctx.save();
+          ctx.strokeStyle = 'rgba(247,80,106,0.75)';
+          ctx.lineWidth   = 1.5;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath(); ctx.moveTo(sx, mT); ctx.lineTo(sx, mT + plotH); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle    = '#f7506a';
+          ctx.font         = '700 8px Arial, sans-serif';
+          ctx.textAlign    = 'center';
+          ctx.textBaseline = 'top';
+          ctx.fillText('x(-)', sx, mT + 3);
+          ctx.font = '600 8px Arial, sans-serif';
+          ctx.fillText(`${xMinusVal.toFixed(2)}cm`, sx, mT + 13);
+          ctx.restore();
+        }
+
+        // ── P bracket antara x(-) dan x(+) ──
+        if (xPlusPeak && xMinusPeak && Pval !== null) {
+          const sxP = idxToX(xPlusPeak.index);
+          const sxM = idxToX(xMinusPeak.index);
+          const bY  = mT + plotH - 7;
+          ctx.save();
+          ctx.strokeStyle = 'rgba(245,166,35,0.65)';
+          ctx.lineWidth   = 1;
+          ctx.beginPath();
+          ctx.moveTo(sxM, bY); ctx.lineTo(sxP, bY);
+          ctx.moveTo(sxM, bY - 4); ctx.lineTo(sxM, bY + 4);
+          ctx.moveTo(sxP, bY - 4); ctx.lineTo(sxP, bY + 4);
+          ctx.stroke();
+          ctx.fillStyle    = 'rgba(245,166,35,0.9)';
+          ctx.font         = '700 8px Arial, sans-serif';
+          ctx.textAlign    = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(`P ≈ ${Pval.toFixed(2)} cm`, (sxM + sxP) / 2, bY - 5);
+          ctx.restore();
+        }
+
+      } else {
+        // Tidak ada peak — reset live store
+        liveInterference.set({ I: null, xPlus: null, xMinus: null, P: null });
+      }
+    } else if (!$enableMeasurement) {
+      // Pastikan store kosong saat fitur dimatikan
+      liveInterference.set({ I: null, xPlus: null, xMinus: null, P: null });
     }
   }
 
