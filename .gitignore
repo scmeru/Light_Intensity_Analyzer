@@ -27,3 +27,7 @@ dist-ssr
 # Jangan commit file hasil build ke sini
 esp32/LightScope_ESP32/data/*
 !esp32/LightScope_ESP32/data/README.md
+
+# Electron portable build output — binary besar, jangan di-commit
+electron-dist/
+
