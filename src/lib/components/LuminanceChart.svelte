@@ -153,22 +153,39 @@
     } else {
       smoothedMax = smoothedMax * 0.995 + bsMax * 0.005;
     }
-    const yMax = Math.max(smoothedMax * 1.05, 1); // 5% headroom
+    const yMax = Math.max(smoothedMax * 1.20, 1); // 20% headroom — ruang cukup untuk label puncak
     // ──────────────────────────────────────────────────────────
 
     const ySteps = 7;
     const { plotW, plotH } = drawAxesAndGrid(w, h, mL, mB, mT, mR, yMax, ySteps);
 
-    // ── X-axis labels ────────────────────────────────────────────
+    // ── X-axis ticks (grid reference — angka diganti label puncak di bawah) ──
     const xDivs = 9;
-    ctx.fillStyle = '#495057';
-    ctx.font = '11px Arial, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
+    ctx.strokeStyle = '#ced4da';
+    ctx.lineWidth = 1;
     for (let i = 0; i <= xDivs; i++) {
       const xi = mL + (plotW / xDivs) * i;
-      const xVal = Math.round((i / xDivs) * len);
-      ctx.fillText(xVal, xi, mT + plotH + 8);
+      ctx.beginPath();
+      ctx.moveTo(xi, mT + plotH);
+      ctx.lineTo(xi, mT + plotH + 4);
+      ctx.stroke();
+    }
+
+    // ── Batas tepi X-axis: label kiri (0) dan kanan (max) ────────
+    {
+      const edgeLeft  = $enableMeasurement && $videoSourceMode !== 'simulation' ? '0.0cm' : '0';
+      const edgeRight = $enableMeasurement && $videoSourceMode !== 'simulation'
+        ? `${$physFrameWidthCm.toFixed(1)}cm`
+        : `${len}`;
+      ctx.fillStyle = '#adb5bd';
+      ctx.font = '10px Arial, sans-serif';
+      ctx.textBaseline = 'top';
+      // Kiri
+      ctx.textAlign = 'left';
+      ctx.fillText(edgeLeft,  mL, mT + plotH + 7);
+      // Kanan
+      ctx.textAlign = 'right';
+      ctx.fillText(edgeRight, mL + plotW, mT + plotH + 7);
     }
 
     // ── Legend (Top Center as in reference) ──────────────────────
@@ -233,12 +250,49 @@
       ctx.lineTo(px, py - 8);
       ctx.stroke();
 
-      // Simple black text above
+      // Label p1, p2 … di atas puncak (cukup ruang karena mT sudah diperbesar)
       ctx.fillStyle = '#212529';
       ctx.font = '10px Arial, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
       ctx.fillText(`p${idx+1}`, px, py - 10);
+
+      // ── Drop line dari puncak ke sumbu X ──────────────────────
+      ctx.save();
+      ctx.strokeStyle = 'rgba(95, 162, 206, 0.38)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(px, py - 2);           // mulai tepat di bawah tick puncak
+      ctx.lineTo(px, mT + plotH);       // berakhir di sumbu X
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Tick biru di sumbu X
+      ctx.strokeStyle = '#5fa2ce';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(px, mT + plotH);
+      ctx.lineTo(px, mT + plotH + 5);
+      ctx.stroke();
+
+      // Label posisi di bawah sumbu X
+      let xLabel;
+      if ($enableMeasurement && $videoSourceMode !== 'simulation') {
+        // Mode pengukuran: tampilkan posisi dalam cm
+        const cmVal = (p.index * ($physFrameWidthCm / len)).toFixed(1);
+        xLabel = `${cmVal}cm`;
+      } else {
+        // Default: tampilkan indeks data
+        xLabel = `${p.index}`;
+      }
+
+      ctx.fillStyle = '#5fa2ce';
+      ctx.font = 'bold 10px Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(xLabel, px, mT + plotH + 7);
+      ctx.restore();
     });
 
     if (peaks.length > 0) {
