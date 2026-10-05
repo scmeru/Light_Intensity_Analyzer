@@ -137,15 +137,15 @@
     const mL = 40, mB = 30, mT = 40, mR = 20;
 
     // ──────────────────────────────────────────────────────────
-    // STRICT SCIENTIFIC DATA PIPELINE (RAW DATA, NO FAKE GAMMA)
+    // SCIENTIFIC DATA PIPELINE
     // 1. Baseline subtraction (Dark current noise floor removal)
     const sorted5 = [...data].sort((a, b) => a - b);
     const floor   = sorted5[Math.floor(sorted5.length * 0.05)] || 0;
     const bsData  = data.map(v => Math.max(0, v - floor)); 
 
-    // 2. No Gamma smoothing - we plot the pure raw intensity
-    const bsMax   = Math.max(...bsData, 1);
-    const dispData = bsData; 
+    // 2. Gaussian smoothing untuk memperhalus grafik
+    const dispData = gaussianSmooth(bsData, 8);
+    const bsMax   = Math.max(...dispData, 1);
 
     // 3. Smoothed Y-axis scale for readability
     if (bsMax > smoothedMax) {
@@ -230,12 +230,17 @@
     ctx.moveTo(points[0].x, points[0].y);
     for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
     ctx.strokeStyle = '#5fa2ce'; // Muted scientific blue
-    ctx.lineWidth = 1.5;
-    ctx.lineJoin = 'miter';
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
     ctx.stroke();
 
-    // ── Peak detection (Subtle, professional annotations) ────────
-    const peaks = findPeaks(bsData, 12, 0.04); 
+  // ── Peak detection (Subtle, professional annotations) ────────
+    const allPeaks = findPeaks(dispData, 12, 0.15);
+    // Hanya 1 puncak tertinggi yang ditampilkan
+    const peaks = allPeaks.length > 0
+      ? [allPeaks.reduce((best, p) => p.value > best.value ? p : best, allPeaks[0])]
+      : [];
     
     peaks.forEach((p, idx) => {
       const px  = mL + (p.index / (len - 1)) * plotW;
@@ -431,7 +436,36 @@
     }
   }
 
-  function findPeaks(arr, windowSize = 12, thresholdFraction = 0.04) {
+  /**
+   * Gaussian smoothing untuk memperhalus grafik intensitas.
+   * @param {number[]} arr   - data input
+   * @param {number}   sigma - lebar kernel (semakin besar semakin halus)
+   */
+  function gaussianSmooth(arr, sigma = 8) {
+    const radius = Math.ceil(sigma * 3);
+    const kernel = [];
+    let kSum = 0;
+    for (let i = -radius; i <= radius; i++) {
+      const w = Math.exp(-(i * i) / (2 * sigma * sigma));
+      kernel.push(w);
+      kSum += w;
+    }
+    // Normalisasi kernel
+    for (let i = 0; i < kernel.length; i++) kernel[i] /= kSum;
+
+    const out = new Float64Array(arr.length);
+    for (let i = 0; i < arr.length; i++) {
+      let val = 0;
+      for (let k = -radius; k <= radius; k++) {
+        const j = Math.min(Math.max(i + k, 0), arr.length - 1);
+        val += arr[j] * kernel[k + radius];
+      }
+      out[i] = val;
+    }
+    return out;
+  }
+
+  function findPeaks(arr, windowSize = 12, thresholdFraction = 0.15) {
     const maxVal = Math.max(...arr, 1);
     const absThreshold = maxVal * thresholdFraction;
     const peaks = [];
