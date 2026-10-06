@@ -336,10 +336,11 @@
       for(let y = 0; y < rows; y++) {
         for(let x = 0; x < cols; x++) {
           let i = (y * cols + x) * 4;
-          let luminance = (data[i]*299 + data[i+1]*587 + data[i+2]*114) / 1000;
-          // MAX-projection: ambil nilai tertinggi per kolom (bukan rata-rata).
-          // Ini memastikan puncak tetap lancip berapa pun tinggi band,
-          // karena satu baris cerah cukup untuk memunculkan puncak.
+          // MAX-channel: ambil nilai kanal tertinggi (R, G, atau B).
+          // Secara saintifik, laser monokromatik hanya mendominasi 1 kanal;
+          // max(R,G,B) mencegah saturasi parsial meredam puncak terang.
+          let luminance = Math.max(data[i], data[i+1], data[i+2]);
+          // MAX-projection per kolom: puncak tetap lancip meski band lebar
           if (luminance > newIntensity[x]) newIntensity[x] = luminance;
         }
       }
