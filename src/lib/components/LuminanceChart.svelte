@@ -1,7 +1,8 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
   import { intensityData, isAnalyzing, videoSourceMode,
-           physFrameWidthCm, enableMeasurement, liveInterference } from '../store.js';
+           physFrameWidthCm, enableMeasurement, liveInterference,
+           physL, physD, physLambda, gratingMode } from '../store.js';
 
   let canvas;
   let ctx;
@@ -360,7 +361,7 @@
       patternLabel = '';
     }
 
-    // ── Interferometry measurement ─────────────────────────────────
+    // ── Diffraction grating measurement ────────────────────────────
     if ($enableMeasurement && $videoSourceMode !== 'simulation' && central) {
       const idxToX = i => mL + (i / Math.max(len - 1, 1)) * plotW;
 
@@ -370,16 +371,51 @@
       const xMP = leftPeaks[0]  ?? null;
 
       const cmPerPx   = $physFrameWidthCm / len;
-      const xPlusVal  = xPP ? (xPP.index - central.index) * cmPerPx : null;
-      const xMinusVal = xMP ? -((central.index - xMP.index) * cmPerPx) : null;
+      // Posisi puncak ±1 relatif ke pusat (cm)
+      const xPlusVal  = xPP ? (xPP.index  - central.index) * cmPerPx : null;
+      const xMinusVal = xMP ? (central.index - xMP.index) * cmPerPx  : null;
+
+      // Rata-rata |x±1| → lebih akurat karena kompensasi asimetri setup
       const Pval = (xPlusVal !== null && xMinusVal !== null)
-        ? (Math.abs(xPlusVal) + Math.abs(xMinusVal)) / 2 : null;
+        ? (xPlusVal + xMinusVal) / 2
+        : (xPlusVal ?? xMinusVal);
+
+      // ── Rumus Kisi Difraksi ─────────────────────────────────────
+      // Orde m = 1 (puncak pertama kiri/kanan)
+      // sin(θ₁) = x / √(L² + x²)   ← sudut sejati (bukan small-angle approx)
+      // Rumus kisi: d · sin(θ) = m · λ
+      //   → jika mode 'calc_lambda': λ = d · sin(θ) / m
+      //   → jika mode 'calc_d':      d = m · λ / sin(θ)
+      //
+      // d dari physD (lines/mm) → d_µm = 1000/physD µm = 1e6/physD nm
+      const L_cm    = $physL * 100;          // m → cm
+      let lambdaCalc = null;
+      let dCalc      = null;
+      let theta1     = null;
+
+      if (Pval !== null && Pval > 0 && L_cm > 0) {
+        const sinTheta = Pval / Math.sqrt(L_cm * L_cm + Pval * Pval);
+        theta1 = +(Math.asin(sinTheta) * (180 / Math.PI)).toFixed(3);
+
+        if ($gratingMode === 'calc_lambda') {
+          // d diketahui dari physD (lines/mm) → d dalam nm = 1e6 / physD
+          const d_nm = 1e6 / $physD;              // nm (1 mm = 1e6 nm)
+          lambdaCalc = +(d_nm * sinTheta).toFixed(1);  // nm, m=1
+        } else {
+          // λ diketahui dari physLambda (nm) → hitung d dalam µm
+          const d_nm = $physLambda / sinTheta;
+          dCalc      = +(d_nm / 1000).toFixed(4);    // nm → µm
+        }
+      }
 
       liveInterference.set({
-        I:      +dispData[central.index].toFixed(1),
-        xPlus:  xPlusVal  !== null ? +xPlusVal.toFixed(2)  : null,
-        xMinus: xMinusVal !== null ? +xMinusVal.toFixed(2) : null,
-        P:      Pval      !== null ? +Pval.toFixed(2)      : null,
+        I:          +dispData[central.index].toFixed(1),
+        xPlus:      xPlusVal  !== null ? +xPlusVal.toFixed(3)  : null,
+        xMinus:     xMinusVal !== null ? +xMinusVal.toFixed(3) : null,
+        P:          Pval      !== null ? +Pval.toFixed(3)      : null,
+        lambdaCalc: lambdaCalc,
+        dCalc:      dCalc,
+        theta1:     theta1,
       });
 
       // Central I₀ line (ungu)
@@ -387,11 +423,13 @@
 
       // x(+) green
       if (xPP && xPlusVal !== null) {
-        drawMeasLine(idxToX(xPP.index), mT, mT + plotH, 'rgba(46,204,135,0.75)', [4,4], `x(+)\n${xPlusVal.toFixed(2)}cm`, '#2ecc87');
+        drawMeasLine(idxToX(xPP.index), mT, mT + plotH, 'rgba(46,204,135,0.75)', [4,4],
+          `x(+)\n${xPlusVal.toFixed(3)}cm`, '#2ecc87');
       }
       // x(-) red
       if (xMP && xMinusVal !== null) {
-        drawMeasLine(idxToX(xMP.index), mT, mT + plotH, 'rgba(247,80,106,0.75)', [4,4], `x(−)\n${xMinusVal.toFixed(2)}cm`, '#f7506a');
+        drawMeasLine(idxToX(xMP.index), mT, mT + plotH, 'rgba(247,80,106,0.75)', [4,4],
+          `x(−)\n${xMinusVal.toFixed(3)}cm`, '#f7506a');
       }
       // P bracket
       if (xPP && xMP && Pval !== null) {
@@ -405,11 +443,12 @@
         ctx.moveTo(sxP,bY-4); ctx.lineTo(sxP,bY+4);
         ctx.stroke();
         ctx.fillStyle='rgba(245,166,35,0.9)'; ctx.font='700 8px Arial'; ctx.textAlign='center'; ctx.textBaseline='bottom';
-        ctx.fillText(`P ≈ ${Pval.toFixed(2)} cm`, (sxM+sxP)/2, bY-5);
+        ctx.fillText(`x̄₁ = ${Pval.toFixed(3)} cm`, (sxM+sxP)/2, bY-5);
         ctx.restore();
       }
     } else if (!$enableMeasurement) {
-      liveInterference.set({ I: null, xPlus: null, xMinus: null, P: null });
+      liveInterference.set({ I: null, xPlus: null, xMinus: null, P: null,
+                             lambdaCalc: null, dCalc: null, theta1: null });
     }
   }
 
