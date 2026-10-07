@@ -133,7 +133,8 @@
     ctx.textBaseline = 'middle';
     ctx.translate(12, mT + plotH / 2);
     ctx.rotate(-Math.PI / 2);
-    ctx.fillText('Intensitas (0–255)', 0, 0);
+    // Karena nilai diekstrapolasi > 255, tidak relevan mencantumkan (0-255) lagi
+    ctx.fillText('Intensitas Relatif', 0, 0);
     ctx.restore();
 
     return { plotW, plotH };
@@ -154,6 +155,39 @@
     const sorted5  = [...data].sort((a, b) => a - b);
     const floor    = sorted5[Math.floor(sorted5.length * 0.05)] || 0;
     const bsData   = data.map(v => Math.max(0, v - floor));
+
+    // 1.5 Peak Reconstruction (Anti-Saturasi Sensor)
+    // Jika sinar laser mentok/rata karena sensor silau (limit 255),
+    // algoritma ini merekonstruksi (ekstrapolasi) tinggi aslinya agar grafik tetap lancip.
+    const maxBs = Math.max(...bsData, 1);
+    // Jika puncak menyentuh batas atas (mendekati nilai jenuh)
+    if (maxBs > 230 - floor) {
+      let i = 0;
+      while (i < bsData.length) {
+        if (bsData[i] >= maxBs - 2) {
+          let start = i;
+          while (i < bsData.length && bsData[i] >= maxBs - 2) i++;
+          let end = i - 1;
+          let width = end - start + 1;
+          
+          // Jika menemukan dataran rata (terpotong) yang cukup lebar
+          if (width >= 4) {
+            const c = (start + end) / 2;
+            const halfW = width / 2;
+            // Semakin lebar datarannya, berarti puncak aslinya semakin tinggi
+            const extraH = width * 4.0; 
+            
+            for (let j = start; j <= end; j++) {
+              const u = (j - c) / halfW; // rentang -1 ke 1
+              // Membentuk kurva lancip (tajam natural)
+              bsData[j] = maxBs + extraH * Math.pow(1 - Math.abs(u), 1.5);
+            }
+          }
+        } else {
+          i++;
+        }
+      }
+    }
 
     // 2. Gaussian smoothing dengan sigma SANGAT KECIL (1.5)
     // Supaya bintik-bintik berdekatan TIDAK MELEBUR jadi satu bukit
